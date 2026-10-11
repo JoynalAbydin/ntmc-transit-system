@@ -417,12 +417,16 @@ async function htmlToPdfShift(html, options = {}) {
   ].filter(Boolean);
 
   let lastError = null;
-  for (const key of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const label = 'PDFShift key #' + (i + 1);   // key-এর কোনো অংশ log-এ ছাপা হয় না
     try {
       const resp = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
         method: 'POST',
+        timeout: 45000,
         headers: {
-          'Authorization': 'Basic ' + Buffer.from(`api:${key}`).toString('base64'),
+          'X-API-Key': key,                                              // বর্তমান v3 auth header
+          'Authorization': 'Basic ' + Buffer.from(`api:${key}`).toString('base64'), // legacy compatibility
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -433,18 +437,36 @@ async function htmlToPdfShift(html, options = {}) {
         })
       });
       if (resp.ok) {
-        console.log('✅ PDFShift key: ...' + key.slice(-6));
+        console.log('✅ ' + label + ' দিয়ে PDF তৈরি হয়েছে');
         return Buffer.from(await resp.arrayBuffer());
       }
       const errText = await resp.text();
-      console.warn('⚠️  Key ...' + key.slice(-6) + ' failed (' + resp.status + '): ' + errText);
-      lastError = new Error('PDFShift (' + resp.status + '): ' + errText);
+      console.warn('⚠️  ' + label + ' failed (' + resp.status + '): ' + errText.slice(0, 300));
+      lastError = new Error('PDFShift (' + resp.status + '): ' + errText.slice(0, 300));
     } catch(e) {
-      console.warn('⚠️  Key ...' + key.slice(-6) + ' error: ' + e.message);
+      console.warn('⚠️  ' + label + ' error: ' + e.message);
       lastError = e;
     }
   }
   throw lastError || new Error('সব PDFShift key ব্যর্থ।');
+}
+
+// ── Dispatcher: সব route এটাই কল করে ──
+// PDFSHIFT_KEY* সেট থাকলে আগে PDFShift, ব্যর্থ হলে Puppeteer fallback।
+// কোনো key না থাকলে সরাসরি Puppeteer।
+function hasPdfShiftKeys() {
+  return Object.keys(process.env).some(k => /^PDFSHIFT_KEY(_\d+)?$/.test(k) && process.env[k]);
+}
+
+async function htmlToPdf(html, options = {}) {
+  if (hasPdfShiftKeys()) {
+    try {
+      return await htmlToPdfShift(html, options);
+    } catch (e) {
+      console.warn('⚠️  PDFShift ব্যর্থ, Puppeteer fallback চালু হচ্ছে: ' + e.message);
+    }
+  }
+  return htmlToPdfPuppeteer(html, options);
 }
 
 
