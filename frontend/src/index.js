@@ -1,11 +1,9 @@
-```jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import axios from 'axios';
 import './index.css';
 import App from './App';
 
-// Render Backend URL
 axios.defaults.baseURL = 'https://ntmc-transit-system.onrender.com';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -15,4 +13,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-```
