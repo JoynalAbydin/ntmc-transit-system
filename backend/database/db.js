@@ -89,12 +89,18 @@ async function seedDatabase(db) {
     args: ['admin']
   });
   if (adminRow.rows.length === 0) {
-    const hash = bcrypt.hashSync('admin123', 10);
-    await db.execute({
-      sql: 'INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)',
-      args: ['admin', hash, 'ADMIN', 'System Administrator']
-    });
-    console.log('✅ Admin user created');
+    // Default পাসওয়ার্ড আর নেই। Admin তৈরি হবে শুধু ADMIN_PASSWORD env variable থাকলে।
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword || adminPassword.length < 8) {
+      console.warn('⚠️  কোনো admin নেই। Admin তৈরি করতে Render-এ ADMIN_PASSWORD (কমপক্ষে ৮ অক্ষর) সেট করে redeploy করুন।');
+    } else {
+      const hash = bcrypt.hashSync(adminPassword, 10);
+      await db.execute({
+        sql: 'INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)',
+        args: ['admin', hash, 'ADMIN', 'System Administrator']
+      });
+      console.log('✅ Admin user created (ADMIN_PASSWORD থেকে)');
+    }
   }
 
   // Seed distribution areas if empty
