@@ -41,6 +41,7 @@ initDb().then(() => {
   app.use('/api/suggestions', require('./routes/suggestions'));
   app.use('/api/pdf',         require('./routes/pdf'));
   app.use('/api/backup',      require('./routes/backup'));
+  app.use('/api/stats',       require('./routes/stats'));
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
