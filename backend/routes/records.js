@@ -33,27 +33,58 @@ async function nextSerial(db) {
   return `TMS-${year}-${String(seq).padStart(4, '0')}`;
 }
 
+// ── Search helpers ──
+// বাংলা ↔ ইংরেজি সংখ্যা: "১২৩" লিখলে "123"-ও মিলবে, উল্টোটাও।
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+function termVariants(term) {
+  const en = term.replace(/[০-৯]/g, d => String(BN_DIGITS.indexOf(d)));
+  const bn = term.replace(/[0-9]/g, d => BN_DIGITS[Number(d)]);
+  return [...new Set([term, en, bn])];
+}
+// LIKE-এর বিশেষ চিহ্ন (% _ \) সাধারণ অক্ষর হিসেবে খোঁজা হবে
+const likeEscape = t => t.replace(/[\\%_]/g, m => '\\' + m);
+
+// সার্চ বক্সের লেখা → WHERE শর্ত।
+// স্পেস দিয়ে আলাদা প্রতিটি শব্দ অবশ্যই মিলতে হবে (AND);
+// প্রতিটি শব্দ খোঁজা হয়: সিরিয়াল, বিতরণ এলাকা, বিবরণ, স্মারক নম্বর ও ঠিকানায়।
+function buildSearchWhere(search) {
+  const terms = String(search || '').trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  if (!terms.length) return { where: '', args: [] };
+
+  const args = [];
+  const termClauses = terms.map(term => {
+    const variantClauses = termVariants(term).map(v => {
+      const like = '%' + likeEscape(v) + '%';
+      args.push(like, like, like, like, like);
+      return `(r.serial_number LIKE ? ESCAPE '\\'
+            OR r.distribution_area LIKE ? ESCAPE '\\'
+            OR r.description LIKE ? ESCAPE '\\'
+            OR EXISTS (SELECT 1 FROM letters l WHERE l.record_id = r.id AND l.letter_number LIKE ? ESCAPE '\\')
+            OR EXISTS (SELECT 1 FROM letters l JOIN addresses a ON a.letter_id = l.id
+                       WHERE l.record_id = r.id AND a.address_text LIKE ? ESCAPE '\\'))`;
+    });
+    return '(' + variantClauses.join(' OR ') + ')';
+  });
+  return { where: 'WHERE ' + termClauses.join(' AND '), args };
+}
+
 // ── GET all records ──
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const db = getDb();
-    const { search, page = 1, limit = 15 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    const s = search ? `%${search}%` : null;
+    const page   = Math.max(parseInt(req.query.page)  || 1, 1);
+    const limit  = Math.min(Math.max(parseInt(req.query.limit) || 15, 1), 500);
+    const offset = (page - 1) * limit;
+    const { where, args } = buildSearchWhere(req.query.search);
 
-    let records, totalRow;
-    if (s) {
-      [records, totalRow] = await Promise.all([
-        db.execute({ sql: `SELECT r.*, u.full_name as creator_name FROM records r LEFT JOIN users u ON r.created_by = u.id WHERE r.serial_number LIKE ? OR r.distribution_area LIKE ? OR r.description LIKE ? ORDER BY r.id DESC LIMIT ? OFFSET ?`, args: [s, s, s, parseInt(limit), offset] }),
-        db.execute({ sql: `SELECT COUNT(*) as total FROM records WHERE serial_number LIKE ? OR distribution_area LIKE ? OR description LIKE ?`, args: [s, s, s] })
-      ]);
-    } else {
-      [records, totalRow] = await Promise.all([
-        db.execute({ sql: `SELECT r.*, u.full_name as creator_name FROM records r LEFT JOIN users u ON r.created_by = u.id ORDER BY r.id DESC LIMIT ? OFFSET ?`, args: [parseInt(limit), offset] }),
-        db.execute('SELECT COUNT(*) as total FROM records')
-      ]);
-    }
-    res.json({ records: records.rows, total: Number(totalRow.rows[0].total), page: parseInt(page), limit: parseInt(limit) });
+    const [records, totalRow] = await Promise.all([
+      db.execute({
+        sql: `SELECT r.*, u.full_name as creator_name FROM records r LEFT JOIN users u ON r.created_by = u.id ${where} ORDER BY r.id DESC LIMIT ? OFFSET ?`,
+        args: [...args, limit, offset]
+      }),
+      db.execute({ sql: `SELECT COUNT(*) as total FROM records r ${where}`, args })
+    ]);
+    res.json({ records: records.rows, total: Number(totalRow.rows[0].total), page, limit });
   } catch(err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -86,7 +117,7 @@ router.post('/', authMiddleware, async (req, res) => {
     for (const letter of (letters || [])) {
       const numStr  = Array.isArray(letter.letter_numbers) ? letter.letter_numbers.join('\n') : (letter.letter_number || '');
       const dateStr = Array.isArray(letter.letter_dates)   ? letter.letter_dates.join('\n')   : (letter.letter_date  || '');
-      const ltStr   = letter.letter_type || (Array.isArray(letter.letter_types) ? (letter.letter_types[0] || '') : '');
+      const ltStr   = JSON.stringify(letter.letter_types || (letter.letter_type ? [letter.letter_type] : []));
 
       const lResult = await db.execute({ sql: 'INSERT INTO letters (record_id, letter_number, letter_date, letter_type) VALUES (?,?,?,?)', args: [recordId, numStr, dateStr, ltStr] });
       const letterId = Number(lResult.lastInsertRowid);
@@ -139,7 +170,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     for (const letter of (letters || [])) {
       const numStr  = Array.isArray(letter.letter_numbers) ? letter.letter_numbers.join('\n') : (letter.letter_number || '');
       const dateStr = Array.isArray(letter.letter_dates)   ? letter.letter_dates.join('\n')   : (letter.letter_date  || '');
-      const ltStr   = letter.letter_type || (Array.isArray(letter.letter_types) ? (letter.letter_types[0] || '') : '');
+      const ltStr   = JSON.stringify(letter.letter_types || (letter.letter_type ? [letter.letter_type] : []));
 
       const lResult = await db.execute({ sql: 'INSERT INTO letters (record_id, letter_number, letter_date, letter_type) VALUES (?,?,?,?)', args: [newId, numStr, dateStr, ltStr] });
       const lid = Number(lResult.lastInsertRowid);
