@@ -1,0 +1,65 @@
+# frontend/ ফোল্ডারে কিছু বদলে git push করলেই নিজে থেকে:
+#   test চালায় → build করে → GitHub Pages-এ deploy করে
+# (test ব্যর্থ হলে deploy হয় না — ভাঙা সাইট কখনো live যায় না)
+name: Deploy frontend (GitHub Pages)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:          # দরকারে Actions ট্যাব থেকে হাতে চালানো যায়
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test -- --watchAll=false
+        env:
+          CI: 'true'
+
+      - name: Build   # REACT_APP_API_URL আসে frontend/.env.production থেকে
+        run: npm run build
+        env:
+          CI: 'false'
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
