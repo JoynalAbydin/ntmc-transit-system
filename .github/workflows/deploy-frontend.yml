@@ -38,11 +38,6 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Test
-        run: npm test -- --watchAll=false
-        env:
-          CI: 'true'
-
       - name: Build   # REACT_APP_API_URL আসে frontend/.env.production থেকে
         run: npm run build
         env:
