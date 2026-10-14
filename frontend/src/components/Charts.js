@@ -13,7 +13,8 @@ const PCT_FONT = 9.5;
 // ── ডোনাট চার্ট ──────────────────────────────────────────────
 // data: [{ label, value, color }]  → অংশের আকার ও শতাংশ এই value থেকে
 // centerValue: গোলের মাঝের সংখ্যা (না দিলে data-র যোগফল)
-export function DonutChart({ data, size = 180, centerLabel = 'মোট', centerValue }) {
+// showPercent: true দিলে প্রতিটি অংশের ভেতরে শতাংশ-লেখা আসে (ডিফল্ট বন্ধ — বর্তমান UI-তে এটি নেই)
+export function DonutChart({ data, size = 180, centerLabel = 'মোট', centerValue, showPercent = false }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const r = 70, c = 2 * Math.PI * r;
   let offset = 0;
@@ -34,7 +35,7 @@ export function DonutChart({ data, size = 180, centerLabel = 'মোট', center
           <title>{`${g.label}: ${toBanglaNumber(g.value)} (${percentText(g.value, total)})`}</title>
         </circle>
       ))}
-      {segments.filter(g => g.len >= percentText(g.value, total).length * PCT_FONT * 0.6 + 2).map(g => (
+      {showPercent && segments.filter(g => g.len >= percentText(g.value, total).length * PCT_FONT * 0.6 + 2).map(g => (
         <text key={`pct-${g.label}`} x={g.x} y={g.y} textAnchor="middle" dominantBaseline="central"
           fontSize={PCT_FONT} fontWeight="700" fill="#ffffff" style={{ pointerEvents: 'none' }}>
           {percentText(g.value, total)}
