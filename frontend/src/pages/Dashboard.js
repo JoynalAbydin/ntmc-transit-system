@@ -332,18 +332,6 @@ export default function Dashboard() {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* এলাকা অনুযায়ী রঙের সূচক */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 text-xs text-gray-600">
-        <span className="text-gray-400">রঙ:</span>
-        {[...new Set([...DISTRIBUTION_AREAS, ...records.map(r => r.distribution_area)])].filter(Boolean).map(area => (
-          <span key={area} className="inline-flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded" style={{ backgroundColor: areaStyle(area).solid }} />{area}
-          </span>
-        ))}
-      </div>
-=======
->>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b
 
       {/* Envelope checkbox merge bar */}
       {envSelected.length > 0 && (

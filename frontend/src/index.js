@@ -7,12 +7,9 @@ import App from './App';
 axios.defaults.baseURL = 'https://ntmc-transit-system.onrender.com';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
 root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
-<<<<<<< Updated upstream
 );
-=======
-);
->>>>>>> Stashed changes

@@ -185,7 +185,7 @@ describe('মাই অ্যাডমিন (শুধু অ্যাডমি
     expect(screen.getByText('📍 এলাকা অনুযায়ী চিঠির সংখ্যা')).toBeInTheDocument();
     expect(screen.getByText('কোন এলাকায় কত চিঠি গেছে')).toBeInTheDocument();
     const table = screen.getAllByRole('table')[0];
-    expect(within(table).getAllByRole('columnheader').map(h => h.textContent)).toEqual(['এলাকা', 'ট্রানজিট', 'চিঠি', 'ঠিকানা', 'চিঠির অংশ']);
+    expect(within(table).getAllByRole('columnheader').map(h => h.textContent)).toEqual(['এলাকা', 'ট্রানজিট', 'ইনভেলাপ', 'মোট চিঠি', 'চিঠি প্রেরনের % (চিঠি ভিত্তিক)']);
     // বারের নিচের লেখা ও একক
     expect(screen.getByText('৯৯ টি ট্রানজিট · ৩৭৫ টি ঠিকানা')).toBeInTheDocument();
     // গোল চার্টের জ্যামিতি ও মাঝের লেখার ফন্ট

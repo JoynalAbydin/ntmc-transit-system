@@ -93,15 +93,9 @@ export default function AdminStats() {
       ) : !data ? null : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-<<<<<<< HEAD
-            <SummaryCard icon="📋" label="ট্রানজিট (প্রকাশিত)" value={data.summary.records}   color="#1e3a5f" />
-            <SummaryCard icon="✉️" label="মোট চিঠি"            value={data.summary.letters}   color="#16a34a" />
-            <SummaryCard icon="📮" label="মোট ঠিকানা / ইনভেলাপ" value={data.summary.addresses} color="#7c3aed" />
-=======
             <SummaryCard icon="📋" label="মোট ট্রানজিট (তৈরি)" value={data.summary.records}   color="#1e3a5f" />
             <SummaryCard icon="✉️" label="মোট ইনভেলাপ (খাম)"            value={data.summary.letters}   color="#16a34a" />
             <SummaryCard icon="📮" label="মোট ঠিকানা (চিঠি)" value={data.summary.addresses} color="#7c3aed" />
->>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b
           </div>
 
           {byArea.length === 0 ? (
@@ -133,13 +127,8 @@ export default function AdminStats() {
                 <div className="overflow-x-auto mt-6">
                   <table className="data-table">
                     <thead><tr>
-<<<<<<< HEAD
-                      <th>এলাকা</th><th className="text-center">ট্রানজিট</th><th className="text-center">চিঠি</th>
-                      <th className="text-center">ঠিকানা</th><th className="text-center">চিঠির অংশ</th>
-=======
                       <th>এলাকা</th><th className="text-center">ট্রানজিট</th><th className="text-center">ইনভেলাপ</th>
                       <th className="text-center">মোট চিঠি</th><th className="text-center">চিঠি প্রেরনের % (চিঠি ভিত্তিক)</th>
->>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b
                     </tr></thead>
                     <tbody>
                       {byArea.map(a => (
