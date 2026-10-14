@@ -107,7 +107,7 @@ export default function AdminStats() {
               <Card title="📍 এলাকা অনুযায়ী চিঠির সংখ্যা" subtitle="কোন এলাকায় কত চিঠি গেছে">
                 <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8 items-center">
                   <div className="flex flex-col items-center gap-3">
-                    <DonutChart centerLabel="মোট চিঠি" centerValue={data.summary.letters}
+                    <DonutChart centerLabel="মোট চিঠি" centerValue={data.summary.addresses}
                       data={byArea.map(a => ({ label: a.area, value: a.addresses, color: areaColor(a.area) }))} />
                     <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
                       {byArea.map(a => (
