@@ -61,6 +61,14 @@ function TransitRowDropdown({ recId, recSerial, pdfLoading, onDownload }) {
                 {opt.label}
               </button>
             ))}
+            {/* Signal Transit — ঠিকানা অনুযায়ী রো, খালি রো নেই */}
+            <div className="border-t border-gray-100 mt-1 pt-1">
+              <button
+                onClick={() => { setOpen(false); onDownload('transit', recId, recSerial, 'signal'); }}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                📡 Signal Transit
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -259,11 +267,12 @@ export default function Dashboard() {
     const key = `${type}-${id}`;
     setPdfLoad(p => ({ ...p, [key]: true }));
     try {
-      const params = type === 'transit' ? { rows } : {};
+      const isSignal = type === 'transit' && rows === 'signal';
+      const params = type === 'transit' ? (isSignal ? { mode: 'signal' } : { rows }) : {};
       const res = await axios.get(`/api/pdf/${type}/${id}`, { responseType: 'blob', params });
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a   = document.createElement('a');
-      const suffix = type === 'transit' && rows !== 6 ? `-${rows}row` : '';
+      const suffix = isSignal ? '-signal' : (type === 'transit' && rows !== 6 ? `-${rows}row` : '');
       a.href = url; a.download = `${type}${suffix}-${serial}.pdf`; a.click();
       URL.revokeObjectURL(url);
       toast.success('PDF ডাউনলোড শুরু হয়েছে');
