@@ -1,4 +1,4 @@
-# NTMC Transit — Turso deployment package
+# Transit Management — Turso deployment package
 
 Start with `SETUP_GUIDE_BN.md`.
 

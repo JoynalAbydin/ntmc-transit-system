@@ -28,7 +28,7 @@ export default function Layout() {
               <div className="w-9 h-9 bg-yellow-400 rounded-lg flex items-center justify-center font-black text-blue-900 text-sm">এন</div>
               <div>
                 <div className="text-white font-bold text-sm leading-tight">ট্রানজিট ব্যবস্থাপনা</div>
-                <div className="text-blue-300 text-xs">এনটিএমসি সিস্টেম</div>
+                <div className="text-blue-300 text-xs">অটোমোটেড সিস্টেম</div>
               </div>
             </Link>
 

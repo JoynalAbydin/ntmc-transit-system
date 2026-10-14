@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b
 import React, {
   createContext,
   useContext,
@@ -60,6 +63,9 @@ export const AuthProvider = ({ children }) => {
 
 <<<<<<< Updated upstream
 export const useAuth = () => useContext(AuthContext);
+<<<<<<< HEAD
 =======
 export const useAuth = () => useContext(AuthContext);
 >>>>>>> Stashed changes
+=======
+>>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b

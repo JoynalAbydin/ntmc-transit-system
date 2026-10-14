@@ -332,6 +332,7 @@ export default function Dashboard() {
         </div>
       )}
 
+<<<<<<< HEAD
       {/* এলাকা অনুযায়ী রঙের সূচক */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 text-xs text-gray-600">
         <span className="text-gray-400">রঙ:</span>
@@ -341,6 +342,8 @@ export default function Dashboard() {
           </span>
         ))}
       </div>
+=======
+>>>>>>> 23b9cc37f26769d7e5a56a54d224699278e4964b
 
       {/* Envelope checkbox merge bar */}
       {envSelected.length > 0 && (
