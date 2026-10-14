@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { toBanglaNumber } from '../utils/helpers';
+import { toBanglaNumber, areaStyle, DISTRIBUTION_AREAS } from '../utils/helpers';
 
 // Transit row options
 const TRANSIT_ROW_OPTIONS = [
@@ -316,13 +316,30 @@ export default function Dashboard() {
         <form onSubmit={handleSearch} className="flex gap-3">
           <input type="text" value={searchInput} onChange={e => setInput(e.target.value)}
             className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-            placeholder="🔍  পত্র নং, বিতরণ এলাকা বা বিবরণ দিয়ে খুঁজুন..." />
+            placeholder="🔍  স্মারক নম্বর, ঠিকানা, ট্রানজিট নং, এলাকা বা বিবরণ দিয়ে খুঁজুন..." />
           <button type="submit" className="bg-[#1e3a5f] text-white px-5 py-2.5 rounded-xl font-medium hover:bg-[#0f2744] transition-all">খুঁজুন</button>
           {search && (
             <button type="button" onClick={() => { setSearch(''); setInput(''); setPage(1); }}
               className="bg-gray-100 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-all">✕</button>
           )}
         </form>
+      </div>
+
+      {search && !loading && (
+        <div className="mb-3 text-sm text-gray-600 flex items-center gap-2 flex-wrap">
+          <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg font-medium">🔍 “{search}”</span>
+          <span>এর জন্য {toBanglaNumber(total)} টি রেকর্ড পাওয়া গেছে — শুধু মিল থাকা সারিগুলো দেখানো হচ্ছে</span>
+        </div>
+      )}
+
+      {/* এলাকা অনুযায়ী রঙের সূচক */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 text-xs text-gray-600">
+        <span className="text-gray-400">রঙ:</span>
+        {[...new Set([...DISTRIBUTION_AREAS, ...records.map(r => r.distribution_area)])].filter(Boolean).map(area => (
+          <span key={area} className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: areaStyle(area).solid }} />{area}
+          </span>
+        ))}
       </div>
 
       {/* Envelope checkbox merge bar */}
@@ -348,6 +365,7 @@ export default function Dashboard() {
             <thead>
               <tr>
                 <th>ক্রমিক</th>
+                <th>ট্রানজিট নং</th>
                 <th>তারিখ</th>
                 <th>বিতরণ এলাকা</th>
                 <th>বিবরণ</th>
@@ -368,8 +386,13 @@ export default function Dashboard() {
                   <div>কোনো রেকর্ড পাওয়া যায়নি</div>
                 </td></tr>
               ) : records.map((rec, idx) => (
-                <tr key={rec.id} className={envSelected.includes(rec.id) ? 'bg-indigo-50' : ''}>
+                <tr key={rec.id} className="area-row"
+                  style={{ '--area-bg': envSelected.includes(rec.id) ? 'rgba(99,102,241,0.18)' : areaStyle(rec.distribution_area).bg,
+                           '--area-solid': areaStyle(rec.distribution_area).solid }}>
                   <td className="font-bold text-blue-800 text-center w-16">{toBanglaNumber((page-1)*15 + idx + 1)}</td>
+                  <td className="whitespace-nowrap">
+                    <span className="font-mono font-bold text-[#1e3a5f] text-sm bg-white/70 border border-gray-200 px-2 py-1 rounded-lg">{rec.serial_number}</span>
+                  </td>
                   <td className="whitespace-nowrap w-36">
                     <div className="flex flex-col gap-1">
                       <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-medium">{rec.date}</span>
@@ -377,7 +400,7 @@ export default function Dashboard() {
                     </div>
                   </td>
                   <td className="w-36">
-                    <span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-medium">{rec.distribution_area}</span>
+                    <span className="px-2 py-1 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: areaStyle(rec.distribution_area).solid }}>{rec.distribution_area}</span>
                   </td>
                   <td className="max-w-[180px]">
                     {editDesc?.id === rec.id ? (
@@ -412,12 +435,12 @@ export default function Dashboard() {
                   </td>
 
                   {/* Envelope + checkbox + preview */}
-                  <td className="text-center w-36">
+                  <td className="text-center whitespace-nowrap">
                     {rec.status !== 'draft' && (
                       <div className="inline-flex items-center gap-1.5">
                         <button onClick={() => downloadPDF('envelope', rec.id, rec.serial_number)}
                           disabled={pdfLoading[`envelope-${rec.id}`]}
-                          className="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
+                          className="inline-flex items-center gap-1 whitespace-nowrap bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
                           {pdfLoading[`envelope-${rec.id}`]
                             ? <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
                             : '✉️'} ইনভেলাপ

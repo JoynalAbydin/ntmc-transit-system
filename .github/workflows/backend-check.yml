@@ -1,0 +1,68 @@
+# backend/ বদলালে চালায়: সিনট্যাক্স + সার্ভার চালু করে login, পরিসংখ্যান ও সার্চ পরীক্ষা।
+# (Render নিজে deploy করে — এটি শুধু আগেভাগে জানায় কিছু ভেঙেছে কিনা)
+name: Backend check
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-check.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'     # CI-তে Chrome নামানোর দরকার নেই
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Syntax check
+        run: |
+          for f in $(git ls-files '*.js'); do node --check "$f"; done
+
+      - name: Start server and test API
+        run: |
+          export TURSO_URL=file:./ci-test.db
+          export JWT_SECRET=ci-secret-0123456789abcdef
+          export ADMIN_PASSWORD=CiAdmin2026
+          export FRONTEND_URL=https://example.github.io
+          export PORT=5099
+          node server.js > server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fs localhost:5099/ping > /dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          if [ "$ok" != 1 ]; then echo "server চালু হয়নি:"; cat server.log; exit 1; fi
+
+          TOKEN=$(curl -fs -X POST localhost:5099/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"CiAdmin2026"}' \
+            | node -pe "JSON.parse(require('fs').readFileSync(0)).token")
+          test -n "$TOKEN"
+          echo "login ঠিক আছে"
+
+          curl -fs -H "Authorization: Bearer $TOKEN" localhost:5099/api/stats > /dev/null && echo "stats ঠিক আছে"
+          curl -fs -H "Authorization: Bearer $TOKEN" 'localhost:5099/api/records?search=123' > /dev/null && echo "search ঠিক আছে"
+
+          # সুরক্ষা: token ছাড়া ঢুকতে পারা চলবে না
+          code=$(curl -s -o /dev/null -w '%{http_code}' localhost:5099/api/stats)
+          test "$code" = 401 && echo "token ছাড়া 401 ঠিক আছে"

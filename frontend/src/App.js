@@ -6,7 +6,7 @@ import LoginPage    from './pages/LoginPage';
 import Dashboard    from './pages/Dashboard';
 import CreateRecord from './pages/CreateRecord';
 import EditRecord   from './pages/EditRecord';
-import AdminUsers   from './pages/AdminUsers';
+import MyAdmin      from './pages/MyAdmin';
 import EntryManager from './pages/EntryManager';
 import Layout       from './components/Layout';
 
@@ -43,7 +43,9 @@ function App() {
             <Route path="create" element={<CreateRecord />} />
             <Route path="edit/:id" element={<EditRecord />} />
             <Route path="entries" element={<EntryManager />} />
-            <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+            <Route path="admin" element={<AdminRoute><MyAdmin /></AdminRoute>} />
+            <Route path="admin/users" element={<Navigate to="/admin?tab=users" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </HashRouter>

@@ -1,17 +1,30 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+require('./middleware/auth');   // JWT_SECRET না থাকলে এখানেই (DB-র আগে) server বন্ধ হবে
 const { initDb } = require('./database/db');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-if (!process.env.TURSO_URL || !process.env.TURSO_TOKEN || !process.env.JWT_SECRET) {
-  console.error('Missing required environment variables: TURSO_URL, TURSO_TOKEN, JWT_SECRET');
-  process.exit(1);
-}
+// ── CORS: শুধু FRONTEND_URL-এ দেওয়া ঠিকানা থেকে ব্রাউজার request চলবে ──
+// FRONTEND_URL = https://username.github.io   (একাধিক হলে comma দিয়ে; শেষে / বা path নয়)
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map(u => u.trim())
+  .filter(Boolean)
+  .map(u => { try { return new URL(u).origin; } catch { return u.replace(/\/+$/, ''); } });
 
-app.use(cors({ origin: true, credentials: true }));
+if (allowedOrigins.length === 0)
+  console.warn('⚠️  FRONTEND_URL সেট নেই: কোনো ব্রাউজার সাইট API ব্যবহার করতে পারবে না।');
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);                 // curl, UptimeRobot, server-to-server (ব্রাউজার নয়)
+    return cb(null, allowedOrigins.includes(origin));   // তালিকায় না থাকলে CORS header দেওয়া হয় না
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -28,6 +41,7 @@ initDb().then(() => {
   app.use('/api/suggestions', require('./routes/suggestions'));
   app.use('/api/pdf',         require('./routes/pdf'));
   app.use('/api/backup',      require('./routes/backup'));
+  app.use('/api/stats',       require('./routes/stats'));
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);

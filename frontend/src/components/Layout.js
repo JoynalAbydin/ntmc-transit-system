@@ -14,7 +14,7 @@ export default function Layout() {
     { to: '/',        label: '📋 ড্যাশবোর্ড',   match: loc => loc === '/' },
     { to: '/create',  label: '➕ নতুন তৈরি',      match: loc => loc === '/create' },
     { to: '/entries', label: '✏️ এন্ট্রি সম্পাদন', match: loc => loc.startsWith('/entries') },
-    ...(isAdmin ? [{ to: '/admin/users', label: '👥 ব্যবহারকারী', match: loc => loc.startsWith('/admin') }] : [])
+    ...(isAdmin ? [{ to: '/admin', label: '🛡️ মাই অ্যাডমিন', match: loc => loc.startsWith('/admin') }] : [])
   ];
 
   return (

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { toBanglaNumber } from '../utils/helpers';
+import { toBanglaNumber, localISODate } from '../utils/helpers';
 
-export default function AdminUsers() {
+// section: 'users' | 'backup' (না দিলে দুটোই) — মাই অ্যাডমিনের আলাদা ট্যাবের জন্য
+export default function AdminUsers({ section } = {}) {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,7 @@ export default function AdminUsers() {
     setBackupLoading(true);
     try {
       const res = await axios.get('/api/backup', { responseType: 'blob' });
-      const date = new Date().toISOString().slice(0,10);
+      const date = localISODate();
       const url  = URL.createObjectURL(new Blob([res.data], { type:'application/json' }));
       const a    = document.createElement('a');
       a.href = url; a.download = `ntmc-backup-${date}.json`; a.click();
@@ -114,6 +115,7 @@ export default function AdminUsers() {
 
   return (
     <div className="fade-in">
+      {section !== 'backup' && <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">👥 ব্যবহারকারী ব্যবস্থাপনা</h1>
@@ -260,8 +262,11 @@ export default function AdminUsers() {
         </div>
       )}
 
+      </>}
+
       {/* ── BACKUP & RESTORE ── */}
-      <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      {section !== 'users' && (
+      <div className={`${section === 'backup' ? '' : 'mt-8 '}bg-white rounded-2xl shadow-sm border border-gray-100 p-6`}>
         <h2 className="text-lg font-bold text-gray-800 mb-1">💾 ব্যাকআপ ও রিস্টোর</h2>
         <p className="text-sm text-gray-500 mb-5">সম্পূর্ণ ডেটাবেস (রেকর্ড, পত্র, ঠিকানা, সাজেশন) JSON ফাইলে ব্যাকআপ করুন</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -298,6 +303,7 @@ export default function AdminUsers() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,13 @@
 const jwt = require('jsonwebtoken');
+
+// JWT secret অবশ্যই environment variable থেকে আসতে হবে। কোনো default/fallback নেই।
+// না থাকলে (বা খুব ছোট হলে) server চালুই হবে না, যাতে নকল token বানানো না যায়।
 const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 16) {
+  throw new Error(
+    'JWT_SECRET সেট করা নেই বা খুব ছোট (কমপক্ষে ১৬ অক্ষর)। Render → Environment-এ লম্বা random JWT_SECRET দিন।'
+  );
+}
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
