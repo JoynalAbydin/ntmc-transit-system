@@ -53,7 +53,7 @@ export default function LoginPage() {
             <span className="text-4xl font-black text-blue-900">এন</span>
           </div>
           <h1 className="text-3xl font-bold text-white mb-1">ট্রানজিট ব্যবস্থাপনা</h1>
-          <p className="text-blue-300 text-sm">জাতীয় টেলিযোগাযোগ পর্যবেক্ষণ কেন্দ্র</p>
+          <p className="text-blue-300 text-sm">অটোমোটেড সিস্টেম</p>
         </div>
 
         {/* Login Form */}
