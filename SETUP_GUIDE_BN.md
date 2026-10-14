@@ -1,4 +1,4 @@
-# NTMC Transit — Turso Setup (Bangla)
+# Transit Management — Turso Setup (Bangla)
 
 এই package-এ পুরোনো frontend এবং নতুন Turso backend একসঙ্গে আছে। পুরোনো SQLite data `migration/transit.db`-এ আছে; এটি GitHub-এ upload করবেন না।
 
