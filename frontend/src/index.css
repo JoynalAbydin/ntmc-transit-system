@@ -101,3 +101,8 @@ body {
 .fade-in {
   animation: fadeIn 0.3s ease forwards;
 }
+
+/* এলাকা অনুযায়ী row-এর রং (--area-bg / --area-solid inline style থেকে আসে) */
+.data-table tr.area-row td { background: var(--area-bg); }
+.data-table tr.area-row td:first-child { box-shadow: inset 5px 0 0 var(--area-solid); }
+.data-table tr.area-row:hover td { background: var(--area-bg); filter: brightness(0.95); }
