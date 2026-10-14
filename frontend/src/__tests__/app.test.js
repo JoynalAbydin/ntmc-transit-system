@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import axios from 'axios';
 import App from '../App';
-import { percentText } from '../components/Charts';
+import { percentText, DonutChart } from '../components/Charts';
 import { areaStyle, areaColor, formatMonth, toBanglaNumber, localISODate, todayString } from '../utils/helpers';
 
 jest.mock('axios', () => {
@@ -12,12 +12,12 @@ jest.mock('axios', () => {
 
 const STATS = {
   range: { from: null, to: null },
-  summary: { records: 10, letters: 564, addresses: 930 },
+  summary: { records: 228, letters: 564, addresses: 930 },   // আপনার সাইটের আসল সংখ্যা (ছবি থেকে)
   by_area: [   // ব্যাকএন্ড যে ক্রমে দেয় (চিঠি বেশি আগে)
-    { area: 'সেনানিবাস এলাকা',   records: 4, letters: 220, addresses: 375 },
-    { area: 'মন্ত্রণালয় এলাকা', records: 3, letters: 190, addresses: 300 },
-    { area: 'সিগন্যাল সেন্টার',  records: 2, letters: 100, addresses: 180 },
-    { area: 'অন্যান্য',           records: 1, letters: 54,  addresses: 75  },
+    { area: 'সেনানিবাস এলাকা',   records: 99, letters: 249, addresses: 375 },
+    { area: 'মন্ত্রণালয় এলাকা', records: 97, letters: 243, addresses: 464 },
+    { area: 'সিগন্যাল সেন্টার',  records: 22, letters: 52,  addresses: 65  },
+    { area: 'অন্যান্য',           records: 10, letters: 20,  addresses: 26  },
   ],
   by_month: [{ month: '2026-09', letters: 300 }, { month: '2026-10', letters: 264 }],
   top_addresses: [{ address: 'ঢাকা সেনানিবাস', letters: 5, envelopes: 2 }],
@@ -30,13 +30,13 @@ const RECORDS = {
   total: 2,
 };
 
-const setup = (role, hash = '#/') => {
+const setup = (role, hash = '#/', stats = STATS) => {
   localStorage.setItem('token', 't');
   window.location.hash = hash;
   axios.get.mockImplementation((url) => {
     if (url === '/api/auth/me')  return Promise.resolve({ data: { id: 1, username: 'u', full_name: 'টেস্ট', role } });
     if (url === '/api/records')  return Promise.resolve({ data: RECORDS });
-    if (url === '/api/stats')    return Promise.resolve({ data: STATS });
+    if (url === '/api/stats')    return Promise.resolve({ data: stats });
     if (url === '/api/users')    return Promise.resolve({ data: [] });
     return Promise.resolve({ data: {} });
   });
@@ -61,6 +61,15 @@ describe('helpers', () => {
     expect(percentText(1, 2)).toBe('৫০.০%');
     expect(percentText(1, 3)).toBe('৩৩.৩%');
     expect(percentText(0, 0)).toBe('০%');
+  });
+  test('DonutChart: showPercent ডিফল্ট বন্ধ; চালু করলে অংশের ভেতরে শতাংশ আসে', () => {
+    const data = [{ label: 'ক', value: 3, color: '#111' }, { label: 'খ', value: 1, color: '#222' }];
+    const { container, rerender } = render(<DonutChart data={data} />);
+    expect(container.querySelectorAll('text').length).toBe(2);                    // শুধু মাঝের দুটি লেখা
+    expect(within(container).getByText('৪')).toBeInTheDocument();                // centerValue না দিলে যোগফল
+    rerender(<DonutChart data={data} showPercent centerValue={99} />);
+    expect(within(container).getByText('৭৫.০%')).toBeInTheDocument();
+    expect(within(container).getByText('৯৯')).toBeInTheDocument();                // centerValue আলাদা
   });
   test('মাসের নাম বাংলায়', () => { expect(formatMonth('2026-10')).toBe('অক্টোবর ২০২৬'); });
 });
@@ -111,32 +120,62 @@ describe('মাই অ্যাডমিন (শুধু অ্যাডমি
     expect(axios.get).toHaveBeenCalledWith('/api/stats', { params: {} });
   });
 
-  test('হিসাব: ঠিকানা ডেটাবেসের সংখ্যা থেকে; শতাংশ = এলাকার ঠিকানা ÷ মোট ঠিকানা × ১০০; গোলের মাঝে মোট চিঠি', async () => {
+  test('হিসাব: ঠিকানা ডেটাবেসের সংখ্যা থেকে; শতাংশ = এলাকার ঠিকানা ÷ মোট ঠিকানা × ১০০; গোলের মাঝে মোট ঠিকানা (লেখা "মোট চিঠি" অপরিবর্তিত)', async () => {
     setup('ADMIN', '#/admin');
     await screen.findByText('এলাকা অনুযায়ী চিঠির সংখ্যা', { exact: false });
     const table = screen.getAllByRole('table')[0];
     const cells = (area) => within(within(table).getByText(area).closest('tr')).getAllByRole('cell').map(c => c.textContent);
 
-    // সেনানিবাস: ৩৭৫ ঠিকানা → ৩৭৫/৯৩০ = ৪০.৩%
-    expect(cells('সেনানিবাস এলাকা')).toEqual(['সেনানিবাস এলাকা', '৪', '২২০', '৩৭৫', '৪০.৩%']);
-    expect(cells('মন্ত্রণালয় এলাকা')).toEqual(['মন্ত্রণালয় এলাকা', '৩', '১৯০', '৩০০', '৩২.৩%']);   // ৩০০/৯৩০
-    expect(cells('সিগন্যাল সেন্টার')).toEqual(['সিগন্যাল সেন্টার', '২', '১০০', '১৮০', '১৯.৪%']);     // ১৮০/৯৩০
-    expect(cells('অন্যান্য')).toEqual(['অন্যান্য', '১', '৫৪', '৭৫', '৮.১%']);                         // ৭৫/৯৩০
-    expect(cells('মোট')).toEqual(['মোট', '১০', '৫৬৪', '৯৩০', '১০০.০%']);
+    // ট্রানজিট, চিঠি, ঠিকানা আগের মতো; শেষ কলাম = ঠিকানা ÷ মোট ঠিকানা × ১০০
+    expect(cells('সেনানিবাস এলাকা')).toEqual(['সেনানিবাস এলাকা', '৯৯', '২৪৯', '৩৭৫', '৪০.৩%']);       // ৩৭৫/৯৩০
+    expect(cells('মন্ত্রণালয় এলাকা')).toEqual(['মন্ত্রণালয় এলাকা', '৯৭', '২৪৩', '৪৬৪', '৪৯.৯%']);   // ৪৬৪/৯৩০
+    expect(cells('সিগন্যাল সেন্টার')).toEqual(['সিগন্যাল সেন্টার', '২২', '৫২', '৬৫', '৭.০%']);         // ৬৫/৯৩০
+    expect(cells('অন্যান্য')).toEqual(['অন্যান্য', '১০', '২০', '২৬', '২.৮%']);                          // ২৬/৯৩০
+    expect(cells('মোট')).toEqual(['মোট', '২২৮', '৫৬৪', '৯৩০', '১০০.০%']);
 
-    // গোল: মাঝে মোট চিঠি (৫৬৪), ৯৩০ নয়; অংশের ভেতরে ঠিকানা-ভিত্তিক শতাংশ
+    // গোলের মাঝে মোট ঠিকানা/ইনভেলাপ (৯৩০); লেখা অপরিবর্তিত; অংশের ভেতরে নতুন কোনো লেখা নেই
     const donut = screen.getByRole('img', { name: /ডোনাট/ });
     expect(within(donut).getByText('মোট চিঠি')).toBeInTheDocument();
-    expect(within(donut).getByText('৫৬৪')).toBeInTheDocument();
-    expect(within(donut).queryByText('৯৩০')).not.toBeInTheDocument();
-    ['৪০.৩%', '৩২.৩%', '১৯.৪%', '৮.১%'].forEach(p => expect(within(donut).getByText(p)).toBeInTheDocument());
+    expect(within(donut).getByText('৯৩০')).toBeInTheDocument();
+    expect(within(donut).queryByText('৫৬৪')).not.toBeInTheDocument();
+    expect(donut.querySelectorAll('text').length).toBe(2);
+    // অংশের আকার ঠিকানার অনুপাতে: ৩৭৫/৯৩০ (সেনানিবাস) → ডোনাটের tooltip-এ ৪০.৩%
+    expect(donut.querySelector('title').textContent).toBe('সেনানিবাস এলাকা: ৩৭৫ (৪০.৩%)');
 
-    // বার: সংখ্যা = ঠিকানা (৩৭৫ টি), দৈর্ঘ্য ঠিকানার অনুপাতে (সর্বোচ্চ = ১০০%)
+    // বার: সংখ্যা = ঠিকানা (আগের ২৪৯ টি-র বদলে ৩৭৫ টি), দৈর্ঘ্য ঠিকানার অনুপাতে (সর্বোচ্চ ৪৬৪ = ১০০%)
     expect(screen.getByText('৩৭৫ টি')).toBeInTheDocument();
+    expect(screen.getByText('৪৬৪ টি')).toBeInTheDocument();
+    expect(screen.getByText('৬৫ টি')).toBeInTheDocument();
+    expect(screen.getByText('২৬ টি')).toBeInTheDocument();
+    expect(screen.queryByText('২৪৯ টি')).not.toBeInTheDocument();
     const bars = [...document.querySelectorAll('.h-3 > div')].map(d => parseFloat(d.style.width));
-    expect(bars[0]).toBeCloseTo(100, 5);
-    expect(bars[1]).toBeCloseTo((300 / 375) * 100, 5);
-    expect(bars[3]).toBeCloseTo((75 / 375) * 100, 5);
+    expect(bars[0]).toBeCloseTo((375 / 464) * 100, 5);
+    expect(bars[1]).toBeCloseTo(100, 5);
+    expect(bars[3]).toBeCloseTo((26 / 464) * 100, 5);
+  });
+
+  test('কোনো হার্ডকোড নয়: ভিন্ন সংখ্যা দিলে গোলের মাঝ, বার, টেবিল ও % সব সেই অনুযায়ী বদলায়', async () => {
+    const other = {
+      range: { from: null, to: null },
+      summary: { records: 3, letters: 40, addresses: 150 },
+      by_area: [
+        { area: 'সেনানিবাস এলাকা',   records: 2, letters: 25, addresses: 100 },
+        { area: 'মন্ত্রণালয় এলাকা', records: 1, letters: 15, addresses: 50 },
+      ],
+      by_month: [], top_addresses: [],
+    };
+    setup('ADMIN', '#/admin', other);
+    await screen.findByText('এলাকা অনুযায়ী চিঠির সংখ্যা', { exact: false });
+    const donut = screen.getByRole('img', { name: /ডোনাট/ });
+    expect(within(donut).getByText('১৫০')).toBeInTheDocument();                  // মোট ঠিকানা
+    expect(within(donut).queryByText('৯৩০')).not.toBeInTheDocument();
+    expect(screen.getByText('১০০ টি')).toBeInTheDocument();                       // সেনানিবাসের বার
+    expect(screen.getByText('৫০ টি')).toBeInTheDocument();
+    const table = screen.getAllByRole('table')[0];
+    const cells = (area) => within(within(table).getByText(area).closest('tr')).getAllByRole('cell').map(c => c.textContent);
+    expect(cells('সেনানিবাস এলাকা')).toEqual(['সেনানিবাস এলাকা', '২', '২৫', '১০০', '৬৬.৭%']);   // ১০০/১৫০
+    expect(cells('মন্ত্রণালয় এলাকা')).toEqual(['মন্ত্রণালয় এলাকা', '১', '১৫', '৫০', '৩৩.৩%']);  // ৫০/১৫০
+    expect(cells('মোট')).toEqual(['মোট', '৩', '৪০', '১৫০', '১০০.০%']);
   });
 
   test('UI অপরিবর্তিত: লেবেল, ফন্ট সাইজ, আকার, লেআউট আগের মতোই', async () => {
@@ -148,7 +187,7 @@ describe('মাই অ্যাডমিন (শুধু অ্যাডমি
     const table = screen.getAllByRole('table')[0];
     expect(within(table).getAllByRole('columnheader').map(h => h.textContent)).toEqual(['এলাকা', 'ট্রানজিট', 'চিঠি', 'ঠিকানা', 'চিঠির অংশ']);
     // বারের নিচের লেখা ও একক
-    expect(screen.getByText('৪ টি ট্রানজিট · ৩৭৫ টি ঠিকানা')).toBeInTheDocument();
+    expect(screen.getByText('৯৯ টি ট্রানজিট · ৩৭৫ টি ঠিকানা')).toBeInTheDocument();
     // গোল চার্টের জ্যামিতি ও মাঝের লেখার ফন্ট
     const donut = screen.getByRole('img', { name: /ডোনাট/ });
     expect(donut.getAttribute('width')).toBe('180');
@@ -156,7 +195,7 @@ describe('মাই অ্যাডমিন (শুধু অ্যাডমি
     const ring = donut.querySelectorAll('circle');
     expect(ring.length).toBe(5);                                   // ১ ধূসর + ৪ অংশ
     ring.forEach(c => { expect(c.getAttribute('r')).toBe('70'); expect(c.getAttribute('stroke-width')).toBe('26'); });
-    const label = within(donut).getByText('মোট চিঠি'); const value = within(donut).getByText('৫৬৪');
+    const label = within(donut).getByText('মোট চিঠি'); const value = within(donut).getByText('৯৩০');
     expect([label.getAttribute('font-size'), label.getAttribute('y')]).toEqual(['13', '97']);
     expect([value.getAttribute('font-size'), value.getAttribute('font-weight'), value.getAttribute('y')]).toEqual(['26', '700', '122']);
     // লেআউট: গ্রিড ২২০px, লেজেন্ডে শতাংশ নেই
