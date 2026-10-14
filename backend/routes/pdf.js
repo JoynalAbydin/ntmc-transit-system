@@ -285,6 +285,121 @@ function generateTransitHTML(record, letters, rowsPerPage = 6) {
   return `<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><style>${css}</style></head><body>${pagesHTML}</body></html>`;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// SIGNAL TRANSIT — শুধু আসল ঠিকানা অনুযায়ী রো, কোনো খালি রো/min-height নেই
+//   • প্রতিটি ঠিকানা = ১টি রো; বর্ডার লেখার গায়ে গায়ে (শুধু padding)
+//   • পেজ ভরে গেলে রো নিজে থেকে পরের পেজে যায় (রো মাঝখানে কাটে না)
+//   • thead (শিরোনাম + তারিখ + কলাম হেডার) ও tfoot (স্বাক্ষর) প্রতি পেজে আসে
+//   • পেজের উপর/নিচের মার্জিনও thead/tfoot-এর spacer থেকে আসে,
+//     তাই PDF-এর margin ০ থাকলেও (Puppeteer/PDFShift) ঠিক থাকে
+// অন্য কোনো ফাংশন বা PDF এর সাথে এর কোনো সম্পর্ক নেই।
+// ──────────────────────────────────────────────────────────────────────────
+function generateSignalTransitHTML(record, letters) {
+  const rows = [];
+  let serial = 1;
+  for (const letter of letters) {
+    const nums  = letter.letter_numbers || [letter.letter_number];
+    const dates = letter.letter_dates   || [letter.letter_date];
+    for (const addr of letter.addresses) {
+      rows.push({ serial: serial++, nums, dates, address: addr.address_text });
+    }
+  }
+  const dateBn = formatDateBn(record.date);
+
+  /* ← এই লাইনগুলো বদলে ফাঁকা/সাইজ ঠিক করুন */
+  const CELL_PAD_Y   = 2;    /* px: রো-র ভিতরে উপর-নিচ ফাঁকা (লেখার সাথে বর্ডারের দূরত্ব) */
+  const TOP_MARGIN   = 8;    /* mm: প্রতি পেজের উপরের মার্জিন */
+  const BOTTOM_MARGIN = 6;   /* mm: প্রতি পেজের নিচের মার্জিন */
+  const SIGN_SPACE_PT = 30;  /* pt: স্বাক্ষর লাইনের উপরে ফাঁকা */
+  const COL = { serial:'6%', letter:'20%', date:'14%', addr:'42%', sig:'18%' };
+
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Noto Serif Bengali',serif;background:white;color:#000;font-size:15px;}
+    @page{size:A4 portrait;margin:0;}
+
+    /* পেজের দুই পাশের মার্জিন */
+    .wrap{width:210mm;padding:0 8mm;}
+
+    table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    thead{display:table-header-group;}   /* প্রতি পেজে হেডার */
+    tfoot{display:table-footer-group;}   /* প্রতি পেজে স্বাক্ষর */
+    tr{break-inside:avoid;page-break-inside:avoid;}
+
+    /* হেডারের উপরের অংশ (শিরোনাম/তারিখ/স্পেসার) — কোনো বর্ডার নেই */
+    td.nb{border:none;padding:0;}
+    .sp-top{height:${TOP_MARGIN}mm;}
+    .sp-bottom{height:${BOTTOM_MARGIN}mm;}
+    .hdr-title{font-size:22px;font-weight:bold;text-decoration:underline;text-align:center;display:block;margin-bottom:6px;}
+    .hdr-date-row{text-align:right;font-size:15px;display:block;margin-bottom:4px;}
+    .hdr-date-value{display:inline-block;border-bottom:1.5px solid #000;min-width:200px;padding-bottom:1px;text-align:left;padding-left:4px;}
+
+    /* কলাম হেডার ও ডাটা সেল — রো-র উচ্চতা শুধু লেখা অনুযায়ী */
+    th, td.cell{
+      border:1px solid #000;
+      padding:${CELL_PAD_Y}px 5px;
+      font-size:15px;
+      line-height:1.3;
+      vertical-align:top;
+      word-break:break-word;
+      overflow-wrap:break-word;
+    }
+    th{font-weight:bold;text-align:center;background:#efefef;vertical-align:middle;padding:4px 5px;}
+    td.c-serial{text-align:center;}
+    td.c-letter{word-break:break-all;}
+
+    .stacked{display:flex;flex-direction:column;width:100%;}
+    .stacked div{margin:0;padding:0;line-height:1.3;word-break:break-all;overflow-wrap:break-word;width:100%;}
+
+    /* স্বাক্ষর (tfoot) */
+    .sign-space{height:${SIGN_SPACE_PT}pt;}
+    .sign-line{border-top:1px solid #000;width:130px;margin-bottom:3px;}
+    .sign-txt{font-size:13px;text-align:center;width:130px;}
+  `;
+
+  const rowsHTML = rows.map(r => {
+    const prefixedNums = prefixLetter(r.nums);
+    const letterCell = r.nums.length
+      ? `<div class="stacked">${prefixedNums.map(n => `<div>${n}</div>`).join('')}</div>`
+      : '';
+    const dateCell = r.dates.length
+      ? `<div class="stacked">${r.dates.map(d => `<div>${formatDateBn(d)}</div>`).join('')}</div>`
+      : '';
+    const addrCell = r.address ? r.address.replace(/\n/g, '<br>') : '';
+    return `<tr>
+      <td class="cell c-serial">${toBn(r.serial)}।</td>
+      <td class="cell c-letter">${letterCell}</td>
+      <td class="cell c-date">${dateCell}</td>
+      <td class="cell c-addr">${addrCell}</td>
+      <td class="cell c-sig"></td>
+    </tr>`;
+  }).join('');
+
+  const html = `<div class="wrap"><table>
+    <colgroup>
+      <col style="width:${COL.serial}"><col style="width:${COL.letter}"><col style="width:${COL.date}">
+      <col style="width:${COL.addr}"><col style="width:${COL.sig}">
+    </colgroup>
+    <thead>
+      <tr><td class="nb sp-top" colspan="5"></td></tr>
+      <tr><td class="nb" colspan="5"><span class="hdr-title">ট্রানজিট স্লিপ এনটিএমসি</span></td></tr>
+      <tr><td class="nb" colspan="5"><span class="hdr-date-row">তারিখ: <span class="hdr-date-value">&nbsp;${dateBn}&nbsp;</span></span></td></tr>
+      <tr>
+        <th>ক্রঃ</th><th>পত্র নং</th><th>পত্রের তারিখ</th><th>ঠিকানা</th><th>গ্রহণকারীর স্বাক্ষর</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHTML}</tbody>
+    <tfoot>
+      <tr><td class="nb" colspan="5"><div class="sign-space"></div></td></tr>
+      <tr><td class="nb" colspan="5"><div class="sign-line"></div><div class="sign-txt">প্রেরকের স্বাক্ষর</div></td></tr>
+      <tr><td class="nb sp-bottom" colspan="5"></td></tr>
+    </tfoot>
+  </table></div>`;
+
+  return `<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><style>${css}</style></head><body>${html}</body></html>`;
+}
+
 function generateEnvelopeHTML(record, letters) {
   const envs = [];
   for (const letter of letters) {
@@ -477,7 +592,10 @@ router.get('/transit/:id', authMiddleware, async (req, res) => {
     const record = await fetchFull(getDb(), req.params.id);
     if (!record) return res.status(404).json({ error: 'Not found' });
     const rowsPerPage = req.query.rows ? parseInt(req.query.rows) : 6;
-    const html = generateTransitHTML(record, record.letters, rowsPerPage);
+    // ?mode=signal → Signal Transit (ঠিকানা অনুযায়ী রো); নইলে আগের মতোই
+    const html = req.query.mode === 'signal'
+      ? generateSignalTransitHTML(record, record.letters)
+      : generateTransitHTML(record, record.letters, rowsPerPage);
     const pdf  = await htmlToPdf(html, { landscape: false });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="transit-${record.serial_number}.pdf"`);
