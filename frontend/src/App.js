@@ -1,3 +1,4 @@
+import About from './pages/About';
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -46,6 +47,7 @@ function App() {
             <Route path="admin" element={<AdminRoute><MyAdmin /></AdminRoute>} />
             <Route path="admin/users" element={<Navigate to="/admin?tab=users" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="about" element={<About />} />
           </Route>
         </Routes>
       </HashRouter>

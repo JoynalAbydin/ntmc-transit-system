@@ -15,6 +15,11 @@ export default function Layout() {
     { to: '/create',  label: '➕ নতুন তৈরি',      match: loc => loc === '/create' },
     { to: '/entries', label: '✏️ এন্ট্রি সম্পাদন', match: loc => loc.startsWith('/entries') },
     ...(isAdmin ? [{ to: '/admin', label: '🛡️ মাই অ্যাডমিন', match: loc => loc.startsWith('/admin') }] : [])
+    {
+  to: '/about',
+  label: 'ℹ️ আমাদের সম্পর্কে',
+  match: loc => loc === '/about'
+}
   ];
 
   return (
